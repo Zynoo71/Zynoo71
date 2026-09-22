@@ -28,9 +28,8 @@
   <img src="https://streak-stats.demolab.com/?user=Zynoo71&theme=transparent&hide_border=true&date_format=Y-m-d" alt="streak stats" />
 </p>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Zynoo71/Zynoo71/output/github-snake-dark.svg" />
-  <img alt="github contribution snake" src="https://raw.githubusercontent.com/Zynoo71/Zynoo71/output/github-snake.svg" width="100%" />
-</picture>
+<p align="center">
+  <img src="https://ghchart.rshah.org/Zynoo71" alt="contribution graph" width="100%" />
+</p>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer" width="100%" />
