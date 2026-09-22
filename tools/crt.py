@@ -21,10 +21,10 @@ LINES = [
 PALETTE = [(180,60,60),(80,200,80),(220,200,70),(70,110,220),(190,80,190),(70,190,200),(200,200,200),(100,100,100)]
 
 DAYS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-# weekly quota at the END of each day; tools are consumed in rotation, one per day
-CLAUDE = [60,  60,  60,  0,  0,  0, 0]
-CODEX  = [100, 60,  60, 60,  0,  0, 0]
-GROK   = [100, 100, 60, 60, 60,  0, 0]
+# weekly quota at the END of each day; all three are used in parallel at different rates
+CLAUDE = [75, 50, 25,  0,  0, 0, 0]
+CODEX  = [85, 65, 45, 25,  0, 0, 0]
+GROK   = [90, 75, 60, 45, 25, 0, 0]
 COMMANDS = ["claude --dangerously-skip-permissions",
             "codex --dangerously-bypass-approvals-and-sandbox",
             "grok --permission-mode bypassPermissions"]
