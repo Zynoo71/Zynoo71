@@ -27,7 +27,8 @@ CLAUDE = [70, 40, 10, 0, 0, 0, 0]
 CODEX  = [80, 60, 35, 10, 0, 0, 0]
 GROK   = [90, 70, 50, 25, 0, 0, 0]
 RESET_FRAMES = 4                       # last frames of Sunday: quotas refill for Monday
-SUNDAY_CMD = "sleep 86400"
+SATURDAY = ("claude", "weekly limit reached ¯\\_(ツ)_/¯")          # quota is gone, shrug
+SUNDAY   = ("yes",    lambda k: " ".join("y" * (2 * k + 2)))       # real command, prints y forever
 COMMANDS = ["claude --dangerously-skip-permissions",
             "codex --dangerously-bypass-approvals-and-sandbox",
             "grok --permission-mode bypassPermissions"]
@@ -52,23 +53,29 @@ def bar_timeline():
             t.append((d, cl, cx, gk, prod))
     return t
 
-def type_cmd(cmd, hold):
-    t = [(cmd[:i], True) for i in range(0, len(cmd) + 3, 3)]
-    t += [(cmd, (k // 3) % 2 == 0) for k in range(hold)]
-    return t + [("", True)]
+def type_cmd(cmd, hold, output=None, cps=4):
+    """Frames of (typed, cursor_on, output_line). With output, the command 'runs' for `hold` frames."""
+    t = [(cmd[:i], True, "") for i in range(0, len(cmd) + cps, cps)]
+    if output is None:
+        t += [(cmd, (k // 3) % 2 == 0, "") for k in range(hold)]
+        t.append(("", True, ""))
+    else:
+        t += [(cmd, False, output(k) if callable(output) else output) for k in range(hold)]
+    return t
 
 def idle(n):
-    return [("", (k // 3) % 2 == 0) for k in range(n)]
+    return [("", (k // 3) % 2 == 0, "") for k in range(n)]
 
 def typing_timeline():
-    """Mon-Sat: the three bypass commands; Sunday: one command, then rest."""
+    """Mon-Fri: the three bypass commands. Sat: try claude, get shrugged at. Sun: yes."""
     per_day = TRANSITION + HOLD
-    weekdays = per_day * 6
     t = []
     for cmd in COMMANDS: t += type_cmd(cmd, 5)
-    assert len(t) <= weekdays, f"weekday typing {len(t)} > {weekdays}"
-    t += idle(weekdays - len(t))
-    t += type_cmd(SUNDAY_CMD, 5)
+    assert len(t) <= per_day * 5, f"weekday typing {len(t)} > {per_day * 5}"
+    t += idle(per_day * 5 - len(t))
+    sat = type_cmd(SATURDAY[0], per_day, SATURDAY[1]); t += sat[:per_day]
+    sun = type_cmd(SUNDAY[0],   per_day, SUNDAY[1]);   t += sun[:per_day]
+    assert len(t) == per_day * 7, len(t)
     return t
 
 # ---------- avatar -> block art ----------
@@ -197,12 +204,14 @@ def draw_right(d, day, claude, codex, grok, prod):
     for i, c in enumerate(PALETTE):
         d.rectangle([RX + i*26, y, RX + i*26 + 24, y + 12], fill=c)
 
-def draw_prompt(d, typed, cursor_on):
+def draw_prompt(d, typed, cursor_on, output=""):
+    y = H - 76
     prompt = "zynoo@mbp$ " + typed
-    d.text((40, H - 62), prompt, font=F18, fill=VALUE)
+    d.text((40, y), prompt, font=F18, fill=VALUE)
+    if output: d.text((40, y + 22), output, font=F18, fill=VALUE)
     if cursor_on:
         cx = 40 + d.textlength(prompt, font=F18)
-        d.rectangle([cx, H - 62, cx + 9, H - 62 + 18], fill=VALUE)
+        d.rectangle([cx, y, cx + 9, y + 18], fill=VALUE)
 
 # ---------- CRT post (deterministic, so frames diff cleanly) ----------
 def make_layer(kind):
@@ -235,19 +244,17 @@ def crt(im, dim=1.0):
 # ---------- render ----------
 F18 = ImageFont.truetype(FONT, 18)
 bars, typing = bar_timeline(), typing_timeline()
-SLEEP_START = (TRANSITION + HOLD) * 6 + len(range(0, len(SUNDAY_CMD) + 3, 3))   # once `sleep` is typed the screen goes dark until Monday
-N = len(bars)                       # one loop = one week; prompt idles if it finishes early
-assert len(typing) <= N, f"typing timeline {len(typing)} > week {N}"
-typing += idle(N - len(typing))
+N = len(bars)                       # one loop = one week
+assert len(typing) == N
 frames = []
 for i in range(N):
     day, claude, codex, grok, prod = bars[i % len(bars)]
-    typed, cur = typing[i]
+    typed, cur, out = typing[i]
     im = Image.new("RGB", (W, H), BG)
     draw_art(im, i)
     d = ImageDraw.Draw(im)
     draw_right(d, day, claude, codex, grok, prod)
-    draw_prompt(d, typed, cur)
+    draw_prompt(d, typed, cur, out)
     frames.append(crt(im))
 
 # weight the palette toward the colour swatches, which are tiny and would otherwise be merged into greens
