@@ -248,7 +248,7 @@ for i in range(N):
     d = ImageDraw.Draw(im)
     draw_right(d, day, claude, codex, grok, prod)
     draw_prompt(d, typed, cur)
-    frames.append(crt(im, dim=0.22 if i >= SLEEP_START else 1.0))
+    frames.append(crt(im))
 
 # weight the palette toward the colour swatches, which are tiny and would otherwise be merged into greens
 pal_src = frames[0].copy()
