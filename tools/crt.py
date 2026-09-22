@@ -175,7 +175,7 @@ def draw_right(d, day, claude, codex, grok, prod):
     d.text((RX, y), "Codex weekly:", font=F18, fill=LABEL);  draw_bar(d, bx, y, codex);  y += LH
     d.text((RX, y), "Grok weekly:", font=F18, fill=LABEL);   draw_bar(d, bx, y, grok);   y += LH
     d.text((RX, y), "Productivity:", font=F18, fill=LABEL);  draw_bar(d, bx, y, prod);   y += LH
-    d.text((RX + 99, y), "= any(quota) ? 100 : 0", font=F18, fill=DIM); y += LH
+    d.text((RX, y), "= any(quota) ? 100 : 0", font=F18, fill=DIM); y += LH
     y += 10
     for i, c in enumerate(PALETTE):
         d.rectangle([RX + i*26, y, RX + i*26 + 24, y + 12], fill=c)
