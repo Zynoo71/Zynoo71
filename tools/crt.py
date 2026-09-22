@@ -16,7 +16,7 @@ LINES = [
     ("Editor:",    "Claude Code\n(I press Enter)"),
     ("Memory:",    "99% used, 1% for names"),
     ("Languages:", "Python, TypeScript, Go,\nBash"),
-    ("Skills:",    "Approve, Accept all,\nYes, Yes, Yes,\n\"it works on my agent\""),
+    ("Skills:",    "Approve, Accept all,\nYes, Yes, Yes"),
     ("Motto:",     "while (true) {\n  believe();\n}"),
 ]
 PALETTE = [(180,60,60),(80,200,80),(220,200,70),(70,110,220),(190,80,190),(70,190,200),(200,200,200),(100,100,100)]
