@@ -69,6 +69,8 @@ def block_art(path, cols, rows):
             if px[x,y] == (255,0,255): mp[x,y] = 255
     gray = ImageOps.autocontrast(im.convert("L"), cutoff=2)
     edges = gray.filter(ImageFilter.FIND_EDGES).filter(ImageFilter.MaxFilter(3))
+    # smooth knit texture so the hat reads as one shape, and lift shadowed midtones
+    gray = gray.filter(ImageFilter.GaussianBlur(2.5)).point(lambda v: int(255 * (v / 255) ** 0.7))
     g = gray.resize((cols, rows), Image.BOX).load()
     m = mask.resize((cols, rows), Image.BOX).load()
     e = edges.resize((cols, rows), Image.BOX).load()
@@ -76,10 +78,10 @@ def block_art(path, cols, rows):
     for y in range(rows):
         row = []
         for x in range(cols):
-            if m[x,y] > 128: row.append(0); continue
+            if m[x,y] > 200: row.append(0); continue
             L = g[x,y]
             lv = 4 if L > 200 else 3 if L > 150 else 2 if L > 90 else 1
-            if e[x,y] > 110: lv = max(1, lv - 1)
+            if e[x,y] > 160: lv = max(1, lv - 1)
             row.append(lv)
         grid.append(row)
     return grid
