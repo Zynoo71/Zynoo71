@@ -17,7 +17,7 @@ LINES = [
     ("Memory:",    "99% used, 1% for names"),
     ("Languages:", "Python, TypeScript, Go,\nBash"),
     ("Skills:",    "Approve, Accept all,\nYes, Yes, Yes,\n\"it works on my agent\""),
-    ("Motto:",     "念念不忘 必有回响"),
+    ("Motto:",     "while (true) { believe(); }"),
 ]
 PALETTE = [(180,60,60),(80,200,80),(220,200,70),(70,110,220),(190,80,190),(70,190,200),(200,200,200),(100,100,100)]
 
