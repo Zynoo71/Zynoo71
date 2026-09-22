@@ -21,35 +21,38 @@ LINES = [
 PALETTE = [(180,60,60),(80,200,80),(220,200,70),(70,110,220),(190,80,190),(70,190,200),(200,200,200),(100,100,100)]
 
 DAYS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-CLAUDE = [100, 70, 35, 0, 0, 0, 0]          # Claude weekly limit by day
-CODEX  = [100, 100, 100, 100, 60, 25, 0]    # fallback once Claude is out
-COMMANDS = ["claude --dangerously-skip-permissions", "codex --yolo", "grok --yolo"]
+# weekly quota at the END of each day; tools are consumed in rotation, one per day
+CLAUDE = [60,  60,  60,  0,  0,  0, 0]
+CODEX  = [100, 60,  60, 60,  0,  0, 0]
+GROK   = [100, 100, 60, 60, 60,  0, 0]
+COMMANDS = ["claude --dangerously-skip-permissions",
+            "codex --dangerously-bypass-approvals-and-sandbox",
+            "grok --permission-mode bypassPermissions"]
 
 FPS_MS = 120
 TRANSITION, HOLD = 5, 6                    # frames per day: slide, then hold
 
 # ---------- timelines ----------
 def bar_timeline():
-    """Per frame: (day, coffee, claude, codex, productivity)."""
+    """Per frame: (day, claude, codex, grok, productivity). Quota drains across the day."""
     t = []
     per_day = TRANSITION + HOLD
     for d in range(len(DAYS)):
-        pc, px = (CLAUDE[d-1], CODEX[d-1]) if d else (CLAUDE[0], CODEX[0])
+        start = [q[d-1] if d else 100 for q in (CLAUDE, CODEX, GROK)]
+        end   = [q[d] for q in (CLAUDE, CODEX, GROK)]
         for k in range(per_day):
-            f = min(1.0, (k + 1) / TRANSITION)
-            cl = pc + (CLAUDE[d] - pc) * f
-            cx = px + (CODEX[d] - px) * f
-            prod = max(cl, cx)
-            coffee = 100 - 0.8 * prod * (k / (per_day - 1))   # drunk in proportion to work done
-            t.append((d, coffee, cl, cx, prod))
+            f = k / (per_day - 1)
+            cl, cx, gk = [a + (b - a) * f for a, b in zip(start, end)]
+            prod = 100 if max(cl, cx, gk) > 0 else 0
+            t.append((d, cl, cx, gk, prod))
     return t
 
 def typing_timeline():
     t = []
     for cmd in COMMANDS:
-        for i in range(0, len(cmd) + 1, 2):
+        for i in range(0, len(cmd) + 3, 3):
             t.append((cmd[:i], True))
-        t += [(cmd, (k // 3) % 2 == 0) for k in range(12)]
+        t += [(cmd, (k // 3) % 2 == 0) for k in range(8)]
         t.append(("", True))
     return t
 
@@ -97,7 +100,7 @@ GRID = block_art("tools/avatar.png", COLS, ROWS)
 
 # sunglasses lenses as ellipses in grid cells: (cx, cy, rx, ry)
 LENSES = [(26.5, 17.5, 3.5, 2.3), (41.0, 18.0, 6.5, 2.8)]
-GLINT_START, GLINT_IN, GLINT_HOLD, GLINT_OUT = 3 * (TRANSITION + HOLD), 4, 6, 4   # fires when Thursday begins
+GLINT_START, GLINT_IN, GLINT_HOLD, GLINT_OUT = 6 * (TRANSITION + HOLD), 3, 5, 3   # fires when Sunday begins: all quota gone
 
 def lens_cells():
     cells = []
@@ -146,7 +149,7 @@ def draw_bar(d, x, y, pct, note=""):
     d.text((tx, y), f"{int(round(pct)):3d}%", font=F18, fill=VALUE)
     if note: d.text((tx + 40, y), note, font=F18, fill=DIM)
 
-def draw_right(d, day, coffee, claude, codex, prod):
+def draw_right(d, day, claude, codex, grok, prod):
     # measure total height to center against art
     n_lines = sum(v.count("\n") + 1 for _, v in LINES)
     total = n_lines*LH + 10 + LH + 5*LH + 10 + 14
@@ -168,11 +171,11 @@ def draw_right(d, day, coffee, claude, codex, prod):
     y += LH
     # bars
     bx = RX + 135
-    d.text((RX, y), "Coffee:", font=F18, fill=LABEL);        draw_bar(d, bx, y, coffee); y += LH
     d.text((RX, y), "Claude weekly:", font=F18, fill=LABEL); draw_bar(d, bx, y, claude); y += LH
     d.text((RX, y), "Codex weekly:", font=F18, fill=LABEL);  draw_bar(d, bx, y, codex);  y += LH
+    d.text((RX, y), "Grok weekly:", font=F18, fill=LABEL);   draw_bar(d, bx, y, grok);   y += LH
     d.text((RX, y), "Productivity:", font=F18, fill=LABEL);  draw_bar(d, bx, y, prod);   y += LH
-    d.text((RX + 99, y), "= max(Claude, Codex)", font=F18, fill=DIM); y += LH
+    d.text((RX + 99, y), "= any(quota) ? 100 : 0", font=F18, fill=DIM); y += LH
     y += 10
     for i, c in enumerate(PALETTE):
         d.rectangle([RX + i*26, y, RX + i*26 + 24, y + 12], fill=c)
@@ -214,15 +217,17 @@ def crt(im):
 # ---------- render ----------
 F18 = ImageFont.truetype(FONT, 18)
 bars, typing = bar_timeline(), typing_timeline()
-N = max(len(bars), len(typing))
+N = len(bars)                       # one loop = one week; prompt idles if it finishes early
+assert len(typing) <= N, f"typing timeline {len(typing)} > week {N}"
+typing += [("", (k // 3) % 2 == 0) for k in range(N - len(typing))]
 frames = []
 for i in range(N):
-    day, coffee, claude, codex, prod = bars[i % len(bars)]
-    typed, cur = typing[i % len(typing)]
+    day, claude, codex, grok, prod = bars[i % len(bars)]
+    typed, cur = typing[i]
     im = Image.new("RGB", (W, H), BG)
     draw_art(im, i)
     d = ImageDraw.Draw(im)
-    draw_right(d, day, coffee, claude, codex, prod)
+    draw_right(d, day, claude, codex, grok, prod)
     draw_prompt(d, typed, cur)
     frames.append(crt(im))
 
@@ -240,5 +245,5 @@ for prev, cur in zip(q, q[1:]):
     out.append(fr)
 out[0].save("assets/neofetch.gif", save_all=True, append_images=out[1:],
             duration=FPS_MS, loop=0, transparency=255, disposal=1, optimize=False)
-frames[20].save("/tmp/neofetch-preview.png"); frames[GLINT_START + GLINT_IN + 2].save("/tmp/neofetch-glint.png")
+frames[16].save("/tmp/neofetch-preview.png"); frames[GLINT_START + GLINT_IN + 2].save("/tmp/neofetch-glint.png")
 import os; print("frames", N, "bytes", os.path.getsize("assets/neofetch.gif"))
