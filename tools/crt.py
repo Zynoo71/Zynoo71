@@ -21,10 +21,13 @@ LINES = [
 PALETTE = [(180,60,60),(80,200,80),(220,200,70),(70,110,220),(190,80,190),(70,190,200),(200,200,200),(100,100,100)]
 
 DAYS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-# weekly quota at the END of each day; all three are used in parallel at different rates
-CLAUDE = [75, 50, 25,  0,  0, 0, 0]
-CODEX  = [85, 65, 45, 25,  0, 0, 0]
-GROK   = [90, 75, 60, 45, 25, 0, 0]
+# weekly quota at the END of each day; all three are used in parallel at different rates.
+# Everything is gone by Friday night, Saturday is dead, Sunday is rest and the reset.
+CLAUDE = [70, 40, 10, 0, 0, 0, 0]
+CODEX  = [80, 60, 35, 10, 0, 0, 0]
+GROK   = [90, 70, 50, 25, 0, 0, 0]
+RESET_FRAMES = 4                       # last frames of Sunday: quotas refill for Monday
+SUNDAY_CMD = "sleep 86400"
 COMMANDS = ["claude --dangerously-skip-permissions",
             "codex --dangerously-bypass-approvals-and-sandbox",
             "grok --permission-mode bypassPermissions"]
@@ -43,17 +46,29 @@ def bar_timeline():
         for k in range(per_day):
             f = k / (per_day - 1)
             cl, cx, gk = [a + (b - a) * f for a, b in zip(start, end)]
+            if d == len(DAYS) - 1 and k >= per_day - RESET_FRAMES:      # weekly reset
+                cl = cx = gk = 100 * (k - (per_day - RESET_FRAMES) + 1) / RESET_FRAMES
             prod = 100 if max(cl, cx, gk) > 0 else 0
             t.append((d, cl, cx, gk, prod))
     return t
 
+def type_cmd(cmd, hold):
+    t = [(cmd[:i], True) for i in range(0, len(cmd) + 3, 3)]
+    t += [(cmd, (k // 3) % 2 == 0) for k in range(hold)]
+    return t + [("", True)]
+
+def idle(n):
+    return [("", (k // 3) % 2 == 0) for k in range(n)]
+
 def typing_timeline():
+    """Mon-Sat: the three bypass commands; Sunday: one command, then rest."""
+    per_day = TRANSITION + HOLD
+    weekdays = per_day * 6
     t = []
-    for cmd in COMMANDS:
-        for i in range(0, len(cmd) + 3, 3):
-            t.append((cmd[:i], True))
-        t += [(cmd, (k // 3) % 2 == 0) for k in range(8)]
-        t.append(("", True))
+    for cmd in COMMANDS: t += type_cmd(cmd, 5)
+    assert len(t) <= weekdays, f"weekday typing {len(t)} > {weekdays}"
+    t += idle(weekdays - len(t))
+    t += type_cmd(SUNDAY_CMD, 5)
     return t
 
 # ---------- avatar -> block art ----------
@@ -102,7 +117,7 @@ GRID = block_art("tools/avatar.png", COLS, ROWS)
 
 # sunglasses lenses as ellipses in grid cells: (cx, cy, rx, ry)
 LENSES = [(26.5, 17.5, 3.5, 2.3), (41.0, 18.0, 6.5, 2.8)]
-GLINT_START, GLINT_IN, GLINT_HOLD, GLINT_OUT = 6 * (TRANSITION + HOLD), 3, 5, 3   # fires when Sunday begins: all quota gone
+GLINT_START, GLINT_IN, GLINT_HOLD, GLINT_OUT = 5 * (TRANSITION + HOLD), 3, 5, 3   # fires when Saturday begins: all quota gone
 
 def lens_cells():
     cells = []
@@ -207,11 +222,12 @@ SCAN, VIG = make_layer("scan"), make_layer("vig")
 MASK = Image.new("L", (W, H), 0)
 ImageDraw.Draw(MASK).rounded_rectangle([14, 14, W-15, H-15], radius=28, fill=255)
 
-def crt(im):
+def crt(im, dim=1.0):
     glow = ImageEnhance.Brightness(im.filter(ImageFilter.GaussianBlur(5))).enhance(0.8)
     im = ImageChops.add(im, glow)
     im = ImageChops.multiply(im, SCAN)
     im = ImageChops.multiply(im, VIG)
+    if dim < 1: im = ImageEnhance.Brightness(im).enhance(dim)   # monitor asleep
     out = Image.new("RGB", (W, H), BEZEL)
     out.paste(im, (0, 0), MASK)
     return out
@@ -219,9 +235,10 @@ def crt(im):
 # ---------- render ----------
 F18 = ImageFont.truetype(FONT, 18)
 bars, typing = bar_timeline(), typing_timeline()
+SLEEP_START = (TRANSITION + HOLD) * 6 + len(range(0, len(SUNDAY_CMD) + 3, 3))   # once `sleep` is typed the screen goes dark until Monday
 N = len(bars)                       # one loop = one week; prompt idles if it finishes early
 assert len(typing) <= N, f"typing timeline {len(typing)} > week {N}"
-typing += [("", (k // 3) % 2 == 0) for k in range(N - len(typing))]
+typing += idle(N - len(typing))
 frames = []
 for i in range(N):
     day, claude, codex, grok, prod = bars[i % len(bars)]
@@ -231,7 +248,7 @@ for i in range(N):
     d = ImageDraw.Draw(im)
     draw_right(d, day, claude, codex, grok, prod)
     draw_prompt(d, typed, cur)
-    frames.append(crt(im))
+    frames.append(crt(im, dim=0.22 if i >= SLEEP_START else 1.0))
 
 # weight the palette toward the colour swatches, which are tiny and would otherwise be merged into greens
 pal_src = frames[0].copy()
