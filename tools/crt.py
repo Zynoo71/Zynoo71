@@ -13,7 +13,7 @@ LINES = [
     ("Name:",      "Zynoo"),
     ("Uptime:",    "forever, 0 reboots"),
     ("Shell:",     "zsh (47 unused plugins)"),
-    ("Editor:",    "Claude Code\n(I just watch)"),
+    ("Editor:",    "Claude Code\n(I press Enter)"),
     ("Memory:",    "99% used, 1% for names"),
     ("Languages:", "Python, TypeScript, Go,\nBash, 拖延"),
     ("Skills:",    "Approve, Accept all,\nYes, Yes, Yes,\n\"it works on my agent\""),
