@@ -23,6 +23,6 @@ AI Agent 工作流 · 量化交易 · 开发者工具
 ### 📊 Stats
 
 <p align="center">
-  <img height="165" src="https://github-readme-stats.vercel.app/api?username=Zynoo71&show_icons=true&theme=transparent&hide_border=true&hide_title=true" />
-  <img height="165" src="https://github-readme-stats.vercel.app/api/top-langs/?username=Zynoo71&layout=compact&theme=transparent&hide_border=true&hide_title=true" />
+  <img height="165" src="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=Zynoo71&theme=transparent" />
+  <img height="165" src="https://github-profile-summary-cards.vercel.app/api/cards/most-commit-language?username=Zynoo71&theme=transparent" />
 </p>
