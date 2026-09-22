@@ -14,7 +14,7 @@ LINES = [
     ("Uptime:",    "forever, 0 reboots"),
     ("Shell:",     "zsh (47 unused plugins)"),
     ("Memory:",    "99% used, 1% for names"),
-    ("Languages:", "Python, TypeScript, Go,\nBash"),
+    ("Languages:", "Python, TS, Go, Bash"),
     ("Skills:",    "Approve, Accept all,\nYes, Yes, Yes"),
     ("Motto:",     "while (true) {\n  believe();\n}"),
 ]
