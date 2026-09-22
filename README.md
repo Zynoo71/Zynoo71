@@ -1,8 +1,8 @@
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=180&section=header&text=Zynoo&fontSize=64&fontColor=ffffff&animation=fadeIn&fontAlignY=38" width="100%" />
+<h1 align="center">Zynoo</h1>
 
 <p align="center">
   <a href="https://github.com/Zynoo71">
-    <img src="https://readme-typing-svg.demolab.com/?font=Fira+Code&weight=500&size=22&pause=1000&color=D97757&center=true&vCenter=true&width=480&lines=Hi%2C+I'm+Zynoo+%F0%9F%91%8B;Building+AI+agent+workflows;Quant+researcher+%C2%B7+A-shares+%2F+futures;Developer+tools+enthusiast" alt="Typing SVG" />
+    <img src="https://readme-typing-svg.demolab.com/?font=Fira+Code&weight=500&size=22&pause=1000&color=D97757&center=true&vCenter=true&width=600&lines=Hi%2C+I'm+Zynoo+%F0%9F%91%8B;Building+AI+agent+workflows;Quant+researcher+%C2%B7+A-shares+%2F+futures;Developer+tools+enthusiast" alt="Typing SVG" />
   </a>
 </p>
 
@@ -31,5 +31,3 @@
 <p align="center">
   <img src="https://ghchart.rshah.org/Zynoo71" alt="contribution graph" width="100%" />
 </p>
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer" width="100%" />
