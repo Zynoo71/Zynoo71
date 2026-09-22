@@ -27,7 +27,3 @@
 <p align="center">
   <img src="https://streak-stats.demolab.com/?user=Zynoo71&theme=transparent&hide_border=true&date_format=Y-m-d" alt="streak stats" />
 </p>
-
-<p align="center">
-  <img src="https://ghchart.rshah.org/Zynoo71" alt="contribution graph" width="100%" />
-</p>
