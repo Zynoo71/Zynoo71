@@ -21,20 +21,27 @@ LINES = [
 PALETTE = [(180,60,60),(80,200,80),(220,200,70),(70,110,220),(190,80,190),(70,190,200),(200,200,200),(100,100,100)]
 
 DAYS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-QUOTA = [100, 70, 35, 0, 0, 0, 0]          # Claude weekly limit by day
-COMMANDS = ["git push --force", "rm -rf node_modules", "claude --dangerously-skip-permissions"]
+CLAUDE = [100, 70, 35, 0, 0, 0, 0]          # Claude weekly limit by day
+CODEX  = [100, 100, 100, 100, 60, 25, 0]    # fallback once Claude is out
+COMMANDS = ["claude --dangerously-skip-permissions", "codex --yolo", "grok --yolo"]
 
 FPS_MS = 120
 TRANSITION, HOLD = 5, 6                    # frames per day: slide, then hold
 
 # ---------- timelines ----------
 def bar_timeline():
+    """Per frame: (day, coffee, claude, codex, productivity)."""
     t = []
+    per_day = TRANSITION + HOLD
     for d in range(len(DAYS)):
-        prev = QUOTA[d - 1] if d else QUOTA[0]
-        for i in range(TRANSITION):
-            t.append((d, prev + (QUOTA[d] - prev) * (i + 1) / TRANSITION))
-        t += [(d, QUOTA[d])] * HOLD
+        pc, px = (CLAUDE[d-1], CODEX[d-1]) if d else (CLAUDE[0], CODEX[0])
+        for k in range(per_day):
+            f = min(1.0, (k + 1) / TRANSITION)
+            cl = pc + (CLAUDE[d] - pc) * f
+            cx = px + (CODEX[d] - px) * f
+            prod = max(cl, cx)
+            coffee = 100 - 0.8 * prod * (k / (per_day - 1))   # drunk in proportion to work done
+            t.append((d, coffee, cl, cx, prod))
     return t
 
 def typing_timeline():
@@ -84,18 +91,50 @@ def draw_cell(px, x0, y0, level, cw, ch, color):
             if on: px[x0 + x, y0 + y] = color
 
 # ---------- static layer (art) ----------
-CW, CH, COLS, ROWS = 7, 14, 60, 30
+CW, CH, COLS, ROWS = 5, 10, 84, 42
 AX, AY = 30, 36
 GRID = block_art("tools/avatar.png", COLS, ROWS)
 
-def draw_art(im):
+# sunglasses lenses as ellipses in grid cells: (cx, cy, rx, ry)
+LENSES = [(26.5, 17.5, 3.5, 2.3), (41.0, 18.0, 6.5, 2.8)]
+GLINT_START, GLINT_IN, GLINT_HOLD, GLINT_OUT = 3 * (TRANSITION + HOLD), 4, 6, 4   # fires when Thursday begins
+
+def lens_cells():
+    cells = []
+    for cx, cy, rx, ry in LENSES:
+        for y in range(int(cy - ry), int(cy + ry) + 2):
+            for x in range(int(cx - rx), int(cx + rx) + 2):
+                if ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1:
+                    cells.append((x, y))
+    return cells
+LENS = lens_cells()
+_d = [x + y for x, y in LENS]; D0, D1 = min(_d), max(_d)
+
+def glint_levels(frame):
+    """Conan-style flash: diagonal sweep in, hold bright, sweep out. Returns {cell: level} or {}."""
+    t = frame - GLINT_START
+    if not (0 <= t < GLINT_IN + GLINT_HOLD + GLINT_OUT): return {}
+    out = {}
+    for x, y in LENS:
+        pos = (x + y - D0) / max(1, D1 - D0)
+        if t < GLINT_IN:                 lit = pos <= (t + 1) / GLINT_IN
+        elif t < GLINT_IN + GLINT_HOLD:  lit = True
+        else:                            lit = pos >= (t - GLINT_IN - GLINT_HOLD + 1) / GLINT_OUT
+        if lit:
+            # one thin unlit diagonal line keeps it reading as a reflection, not a blank patch
+            out[(x, y)] = 2 if abs(pos - 0.62) < 0.05 else 4
+    return out
+
+def draw_art(im, frame=0):
     px = im.load()
+    g = glint_levels(frame)
     for y, row in enumerate(GRID):
         for x, lv in enumerate(row):
+            lv = g.get((x, y), lv)
             if lv: draw_cell(px, AX + x*CW, AY + y*CH, lv, CW, CH, ART)
 
 # ---------- right column ----------
-RX, LH = 470, 24
+RX, LH = 470, 22
 
 def draw_bar(d, x, y, pct, note=""):
     seg, gap, n = 8, 1, 10
@@ -107,10 +146,10 @@ def draw_bar(d, x, y, pct, note=""):
     d.text((tx, y), f"{int(round(pct)):3d}%", font=F18, fill=VALUE)
     if note: d.text((tx + 40, y), note, font=F18, fill=DIM)
 
-def draw_right(d, day, quota):
+def draw_right(d, day, coffee, claude, codex, prod):
     # measure total height to center against art
     n_lines = sum(v.count("\n") + 1 for _, v in LINES)
-    total = n_lines*LH + 12 + LH + 4*LH + 12 + 32
+    total = n_lines*LH + 10 + LH + 5*LH + 10 + 14
     art_h = ROWS * CH
     y = AY + (art_h - total) // 2
     for label, value in LINES:
@@ -118,7 +157,7 @@ def draw_right(d, day, quota):
         for i, part in enumerate(value.split("\n")):
             d.text((RX + 99, y + i*LH), part, font=F18, fill=VALUE)
         y += LH * (value.count("\n") + 1)
-    y += 12
+    y += 10
     # week strip
     x = RX
     for i, name in enumerate(DAYS):
@@ -129,14 +168,14 @@ def draw_right(d, day, quota):
     y += LH
     # bars
     bx = RX + 135
-    d.text((RX, y), "Coffee:", font=F18, fill=LABEL);        draw_bar(d, bx, y, 100); y += LH
-    d.text((RX, y), "Claude weekly:", font=F18, fill=LABEL); draw_bar(d, bx, y, quota); y += LH
-    d.text((RX, y), "Productivity:", font=F18, fill=LABEL);  draw_bar(d, bx, y, min(100, quota)); y += LH
-    d.text((RX + 99, y), "= min(Coffee, Claude)", font=F18, fill=DIM); y += LH
-    y += 12
+    d.text((RX, y), "Coffee:", font=F18, fill=LABEL);        draw_bar(d, bx, y, coffee); y += LH
+    d.text((RX, y), "Claude weekly:", font=F18, fill=LABEL); draw_bar(d, bx, y, claude); y += LH
+    d.text((RX, y), "Codex weekly:", font=F18, fill=LABEL);  draw_bar(d, bx, y, codex);  y += LH
+    d.text((RX, y), "Productivity:", font=F18, fill=LABEL);  draw_bar(d, bx, y, prod);   y += LH
+    d.text((RX + 99, y), "= max(Claude, Codex)", font=F18, fill=DIM); y += LH
+    y += 10
     for i, c in enumerate(PALETTE):
-        d.rectangle([RX + i*26, y, RX + i*26 + 24, y + 20], fill=c)
-        d.rectangle([RX + i*26, y + 22, RX + i*26 + 24, y + 30], fill=tuple(min(255, v + 60) for v in c))
+        d.rectangle([RX + i*26, y, RX + i*26 + 24, y + 12], fill=c)
 
 def draw_prompt(d, typed, cursor_on):
     prompt = "zynoo@mbp$ " + typed
@@ -178,18 +217,18 @@ bars, typing = bar_timeline(), typing_timeline()
 N = max(len(bars), len(typing))
 frames = []
 for i in range(N):
-    day, quota = bars[i % len(bars)]
+    day, coffee, claude, codex, prod = bars[i % len(bars)]
     typed, cur = typing[i % len(typing)]
     im = Image.new("RGB", (W, H), BG)
-    draw_art(im)
+    draw_art(im, i)
     d = ImageDraw.Draw(im)
-    draw_right(d, day, quota)
+    draw_right(d, day, coffee, claude, codex, prod)
     draw_prompt(d, typed, cur)
     frames.append(crt(im))
 
 # weight the palette toward the colour swatches, which are tiny and would otherwise be merged into greens
 pal_src = frames[0].copy()
-sw = frames[0].crop((RX - 4, H - 140, RX + 8*26 + 4, H - 60)).resize((400, 300), Image.NEAREST)
+sw = frames[0].crop((RX - 4, H - 110, RX + 8*26 + 4, H - 60)).resize((400, 300), Image.NEAREST)
 pal_src.paste(sw, (AX, AY))
 pal = pal_src.quantize(colors=255, method=Image.Quantize.MEDIANCUT)
 q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
@@ -201,5 +240,5 @@ for prev, cur in zip(q, q[1:]):
     out.append(fr)
 out[0].save("assets/neofetch.gif", save_all=True, append_images=out[1:],
             duration=FPS_MS, loop=0, transparency=255, disposal=1, optimize=False)
-frames[20].save("/tmp/neofetch-preview.png")
+frames[20].save("/tmp/neofetch-preview.png"); frames[GLINT_START + GLINT_IN + 2].save("/tmp/neofetch-glint.png")
 import os; print("frames", N, "bytes", os.path.getsize("assets/neofetch.gif"))
