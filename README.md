@@ -25,8 +25,7 @@
 ### 📊 Stats
 
 <p align="center">
-  <img height="165" src="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=Zynoo71&theme=transparent" />
-  <img height="165" src="https://github-profile-summary-cards.vercel.app/api/cards/most-commit-language?username=Zynoo71&theme=transparent" />
+  <img src="https://streak-stats.demolab.com/?user=Zynoo71&theme=transparent&hide_border=true&date_format=Y-m-d" alt="streak stats" />
 </p>
 
 <picture>
